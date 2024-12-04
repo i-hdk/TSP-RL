@@ -15,47 +15,39 @@ class Actions(Enum):
 class GridWorldEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size=5):
-        self.size = size  # The size of the square grid
-        self.window_size = 512  # The size of the PyGame window
-
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2,
-        # i.e. MultiDiscrete([size, size]).
-        self.observation_space = spaces.Dict(
-            {
-                "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "target": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-            }
-        )
-
-        # We have 4 actions, corresponding to "right", "up", "left", "down", "right"
-        self.action_space = spaces.Discrete(4)
-
+    def __init__(
+        self,
+        num_nodes: int = 20,
+        batch_size: int = 128,
+        num_draw: int = 6,
+        seed: int = 69,
+    ):
         """
-        The following dictionary maps abstract actions from `self.action_space` to 
-        the direction we will walk in if that action is taken.
-        i.e. 0 corresponds to "right", 1 to "up" etc.
+        Args:
+            num_nodes (int, optional): Number of nodes in each generated graph. Defaults to 32.
+            batch_size (int, optional): Number of graphs to generate. Defaults to 128.
+            num_draw (int, optional): When calling the render num_draw graphs will be rendered. 
+                Defaults to 6.
+            seed (int, optional): Seed of the environment. Defaults to 69.
+            video_save_path (str, optional): When set a video of the interactions with the 
+                environment is saved at the set location. Defaults to None.
         """
-        self._action_to_direction = {
-            Actions.right.value: np.array([1, 0]),
-            Actions.up.value: np.array([0, 1]),
-            Actions.left.value: np.array([-1, 0]),
-            Actions.down.value: np.array([0, -1]),
-        }
+        
+        assert (
+            num_draw <= batch_size
+        ), "Num_draw needs to be equal or lower than the number of generated graphs."
 
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.render_mode = render_mode
+        np.random.seed(seed)
 
-        """
-        If human-rendering is used, `self.window` will be a reference
-        to the window that we draw to. `self.clock` will be a clock that is used
-        to ensure that the environment is rendered at the correct framerate in
-        human-mode. They will remain `None` until human-mode is used for the
-        first time.
-        """
-        self.window = None
-        self.clock = None
+        self.step_count = 0
+        self.num_nodes = num_nodes
+        self.batch_size = batch_size
+
+        # init video recorder
+        self.draw_idxs = np.random.choice(batch_size, num_draw, replace=False)
+        self.video_save_path = None
+
+        self.generate_graphs()
 
     def _get_obs(self):
         return {"agent": self._agent_location, "target": self._target_location}
@@ -90,23 +82,48 @@ class GridWorldEnv(gym.Env):
 
         return observation, info
 
-    def step(self, action):
-        # Map the action (element of {0,1,2,3}) to the direction we walk in
-        direction = self._action_to_direction[action]
-        # We use `np.clip` to make sure we don't leave the grid
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
+    def step(self, actions: np.ndarray) -> Tuple[ObsType, float, bool, dict]:
+        """
+        Run the environment one timestep. It's the users responsiblity to
+        call reset() when the end of the episode has been reached. Accepts
+        an actions and return a tuple of (observation, reward, done, info)
+
+        Args:
+            actions (nd.ndarray): Which node to visit for each graph.
+                Shape of actions is (batch_size, 1).
+
+        Returns:
+            Tuple[ObsType, float, bool, dict]: Tuple of the observation,
+                reward, done and info. The observation is within
+                self.observation_space. The reward is for the previous action.
+                If done equals True then the episode is over. Stepping through
+                environment while done returns undefined results. Info contains
+                may contain additions info in terms of metrics, state variables
+                and such.
+        """
+        assert (
+            actions.shape[0] == self.batch_size
+        ), "Number of actions need to equal the number of generated graphs."
+
+        self.step_count += 1
+
+        # visit each next node
+        self.visited[np.arange(len(actions)), actions.T] = 1
+        traversed_edges = np.hstack([self.current_location, actions]).astype(int)
+        self.sampler.visit_edges(traversed_edges)
+
+        self.current_location = np.array(actions)
+
+        if self.video_save_path is not None:
+            self.vid.capture_frame()
+
+        done = self.is_done()
+        return (
+            self.get_state(),
+            -self.sampler.get_distances(traversed_edges),
+            done,
+            None,
         )
-        # An episode is done iff the agent has reached the target
-        terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else 0  # Binary sparse rewards
-        observation = self._get_obs()
-        info = self._get_info()
-
-        if self.render_mode == "human":
-            self._render_frame()
-
-        return observation, reward, terminated, False, info
 
     def render(self):
         if self.render_mode == "rgb_array":
