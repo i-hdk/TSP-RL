@@ -49,11 +49,13 @@ class GridWorldEnv(gym.Env):
 
         self.generate_graphs()
 
+    #izz note: private method, not mandatory since u can compute observations in reset and step separately
     def _get_obs(self):
         return {"agent": self._agent_location, "target": self._target_location}
 
+    #izz note: auxiliary info returned by step and reset
     def _get_info(self):
-        return {
+        return { #izz note: returns manhattan distance
             "distance": np.linalg.norm(
                 self._agent_location - self._target_location, ord=1
             )
