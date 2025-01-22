@@ -1,7 +1,7 @@
 #inports from vrp
 from typing import Tuple, Union
 import numpy as np
-from gym import Env
+from gymnasium import Env
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 from ..graph.vrp_network import VRPNetwork
 from .common import ObsType
@@ -12,14 +12,6 @@ import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import numpy as np
-
-#from gymnasium
-#TODO: FIGURE OUT IF THIS IS NEEDED + how to integrate w this env
-class Actions(Enum):
-    right = 0
-    up = 1
-    left = 2
-    down = 3
 
 class TSPEnv(Env):
     """
@@ -69,6 +61,8 @@ class TSPEnv(Env):
         self.video_save_path = None
 
         self.generate_graphs()
+        
+        #need to put observation & action space here!!
 
     def step(self, actions: np.ndarray) -> Tuple[ObsType, float, bool, dict]:
         """
