@@ -62,8 +62,16 @@ class TSPEnv(Env):
 
         self.generate_graphs()
         
-        #need to put observation & action space here!!
-
+        #following shape of state
+        self.observation_space = spaces.Box(
+            low = np.zeros(shape=(batch_size, num_nodes, 4)), 
+            high = np.ones(shape=(batch_size, num_nodes, 4))
+            )
+        #following parameter in step (which node to visit for each graph)
+        self.action_space = spaces.Dict()
+            
+        
+        
     def step(self, actions: np.ndarray) -> Tuple[ObsType, float, bool, dict]:
         """
         Run the environment one timestep. It's the users responsiblity to
