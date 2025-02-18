@@ -27,7 +27,7 @@ class TSPEnv(Env):
         each graph. Shape (batch_size, 1)
     """
 
-    metadata = {"render.modes": ["human", "rgb_array"]}
+    metadata = {"render_modes": ["human", "rgb_array"]}
 
     def __init__(
         self,
@@ -68,7 +68,10 @@ class TSPEnv(Env):
             high = np.ones(shape=(batch_size, num_nodes, 4))
             )
         #following parameter in step (which node to visit for each graph)
-        self.action_space = spaces.Dict()
+        self.action_space = spaces.Box(
+            low = np.zeros(shape=(batch_size, 1)), 
+            high = np.full(shape=(batch_size, 1),fill_value=num_nodes),dtype=int
+            )
             
         
         
