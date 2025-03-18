@@ -1,12 +1,10 @@
 import gymnasium
 import tsp
-from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv
-from stable_baselines import PPO2
+from stable_baselines3 import PPO
 
 env = gymnasium.make('tsp/TSP-v0')
 
-model = PPO2(MlpPolicy, env, verbose=1)
+model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=10000)
 
 obs = env.reset()

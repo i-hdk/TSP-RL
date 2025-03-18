@@ -2,7 +2,7 @@
 from typing import Tuple, Union
 import numpy as np
 from gymnasium import Env
-from gym.wrappers.monitoring.video_recorder import VideoRecorder
+#sfrom gym.wrappers.monitoring.video_recorder import VideoRecorder
 from ..graph.vrp_network import VRPNetwork
 from .common import ObsType
 
