@@ -13,7 +13,7 @@ from gymnasium import spaces
 import pygame
 import numpy as np
 
-class TSPEnv(Env):
+class TSPEnv(gym.Env):
     """
     TSPEnv implements the Traveling Salesmen Problem
     a special variant of the vehicle routing problem.
@@ -165,13 +165,14 @@ class TSPEnv(Env):
 
         return self.visited
 
-    def reset(self) -> Union[ObsType, Tuple[ObsType, dict]]:
+    def reset(self, *, seed=None, options=None) -> Union[ObsType, Tuple[ObsType, dict]]:
         """
         Resets the environment. 
 
         Returns:
             Union[ObsType, Tuple[ObsType, dict]]: State of the environment.
         """
+        super().reset(seed=seed) # seed the environment for debugging
 
         self.step_count = 0
         self.generate_graphs()
