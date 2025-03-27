@@ -1,5 +1,5 @@
 #inports from vrp
-from typing import Tuple, Union
+from typing import Tuple, Union, Any
 import numpy as np
 from gymnasium import Env
 #sfrom gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -68,10 +68,7 @@ class TSPEnv(gym.Env):
             high = np.ones(shape=(batch_size, num_nodes, 4))
             )
         #following parameter in step (which node to visit for each graph)
-        self.action_space = spaces.Box(
-            low = np.zeros(shape=(batch_size, 1)), 
-            high = np.full(shape=(batch_size, 1),fill_value=num_nodes),dtype=int
-            )
+        self.action_space = spaces.MultiDiscrete([num_nodes] * batch_size)        
             
         
         
@@ -99,6 +96,14 @@ class TSPEnv(gym.Env):
         ), "Number of actions need to equal the number of generated graphs."
 
         self.step_count += 1
+
+        #for debug
+        print(actions)
+        print(len(actions))
+        print(actions.shape)
+        print(actions.T)
+        print(type(self.visited))
+        print(self.visited.shape)
 
         # visit each next node
         self.visited[np.arange(len(actions)), actions.T] = 1
@@ -165,7 +170,7 @@ class TSPEnv(gym.Env):
 
         return self.visited
 
-    def reset(self, *, seed=None, options=None) -> Union[ObsType, Tuple[ObsType, dict]]:
+    def reset(self, *, seed=None, options=None) -> Union[ObsType, Tuple[ObsType, dict[str, Any]]]:
         """
         Resets the environment. 
 
@@ -176,7 +181,7 @@ class TSPEnv(gym.Env):
 
         self.step_count = 0
         self.generate_graphs()
-        return self.get_state()
+        return (self.get_state(),{0:""})
 
     def generate_graphs(self):
         """
