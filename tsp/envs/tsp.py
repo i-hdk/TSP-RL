@@ -68,8 +68,8 @@ class TSPEnv(gym.Env):
             high = np.ones(shape=(batch_size, num_nodes, 4))
             )
         #following parameter in step (which node to visit for each graph)
-        self.action_space = spaces.MultiDiscrete([num_nodes] * batch_size)        
-            
+        self.action_space = spaces.MultiDiscrete([num_nodes] * batch_size) #each action is a discrete value of {0,1...num_nodes-1}   
+        
         
         
     def step(self, actions: np.ndarray) -> Tuple[ObsType, float, bool, dict]:
@@ -98,16 +98,13 @@ class TSPEnv(gym.Env):
         self.step_count += 1
 
         #for debug
-        print(actions)
-        print(len(actions))
+        print(self.current_location.shape)
+        print(self.current_location)
         print(actions.shape)
-        print(actions.T)
-        print(type(self.visited))
-        print(self.visited.shape)
 
         # visit each next node
         self.visited[np.arange(len(actions)), actions.T] = 1
-        traversed_edges = np.hstack([self.current_location, actions]).astype(int)
+        traversed_edges = np.hstack([self.current_location, actions.reshape(-1,1)]).astype(int)
         self.sampler.visit_edges(traversed_edges)
 
         self.current_location = np.array(actions)
@@ -120,7 +117,7 @@ class TSPEnv(gym.Env):
             self.get_state(),
             -self.sampler.get_distances(traversed_edges),
             done,
-            None,
+            {},
         )
 
     def is_done(self):
@@ -145,9 +142,10 @@ class TSPEnv(gym.Env):
                 self.generate_mask(),
             ]
         )
-
+        
         # set depots in state to 1
         state[np.arange(len(state)), self.depots.T, 2] = 1
+        
 
         return state
 
@@ -168,7 +166,7 @@ class TSPEnv(gym.Env):
         done_graphs = np.where(np.all(self.visited, axis=1) == True)[0]
         self.visited[done_graphs, self.depots[done_graphs].squeeze()] = 0
 
-        return self.visited
+        return (self.visited > 0.5).astype(np.float32) #since we have float obs
 
     def reset(self, *, seed=None, options=None) -> Union[ObsType, Tuple[ObsType, dict[str, Any]]]:
         """
