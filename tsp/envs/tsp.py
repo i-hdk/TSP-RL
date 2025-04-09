@@ -1,5 +1,5 @@
 #inports from vrp
-from typing import Tuple, Union, Any
+from typing import Tuple, Union, Any, SupportsFloat
 import numpy as np
 from gymnasium import Env
 #sfrom gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -12,6 +12,8 @@ import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import numpy as np
+
+import logging
 
 class TSPEnv(gym.Env):
     """
@@ -72,7 +74,7 @@ class TSPEnv(gym.Env):
         
         
         
-    def step(self, actions: np.ndarray) -> Tuple[ObsType, float, bool, dict]:
+    def step(self, actions: np.ndarray) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Run the environment one timestep. It's the users responsiblity to
         call reset() when the end of the episode has been reached. Accepts
@@ -90,6 +92,8 @@ class TSPEnv(gym.Env):
                 environment while done returns undefined results. Info contains
                 may contain additions info in terms of metrics, state variables
                 and such.
+                
+                edit: extra bool is for truncate
         """
         assert (
             actions.shape[0] == self.batch_size
@@ -97,14 +101,15 @@ class TSPEnv(gym.Env):
 
         self.step_count += 1
 
-        #for debug
-        print(self.current_location.shape)
-        print(self.current_location)
-        print(actions.shape)
-
+    
         # visit each next node
         self.visited[np.arange(len(actions)), actions.T] = 1
-        traversed_edges = np.hstack([self.current_location, actions.reshape(-1,1)]).astype(int)
+        
+        if self.current_location.ndim==2:
+            traversed_edges = np.hstack([self.current_location, actions.reshape(-1,1)]).astype(int)
+        else:
+            traversed_edges = np.hstack([self.current_location, actions]).astype(int)
+            
         self.sampler.visit_edges(traversed_edges)
 
         self.current_location = np.array(actions)
@@ -115,8 +120,9 @@ class TSPEnv(gym.Env):
         done = self.is_done()
         return (
             self.get_state(),
-            -self.sampler.get_distances(traversed_edges),
+            float(np.sum(-self.sampler.get_distances(traversed_edges))), #this could hurt the logic
             done,
+            0,
             {},
         )
 
